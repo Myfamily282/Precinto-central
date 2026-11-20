@@ -1,0 +1,15 @@
+const config = {
+  appId: 'com.precintocentral.detectives',
+  appName: 'Precinto Central',
+  webDir: 'dist',
+  server: {
+    androidScheme: 'https',
+    cleartext: true,
+  },
+  android: {
+    backgroundColor: '#22160F',
+    allowMixedContent: true,
+  },
+};
+
+export default config;

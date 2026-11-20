@@ -1,0 +1,6 @@
+{
+  "name": "Precinto Central",
+  "description": "Juego de detectives online y presencial para Android: modo impostor con fotos, chat en vivo, votación secreta y minijuegos de escena del crimen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

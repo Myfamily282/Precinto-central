@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="#0F172A"/>
+  <rect x="40" y="40" width="432" height="432" rx="88" stroke="#1E293B" stroke-width="6"/>
+  <!-- Shield / Precinct Badge -->
+  <path d="M256 96L376 144V242C376 322 324 388 256 416C188 388 136 322 136 242V144L256 96Z" fill="#1E293B" stroke="#3B82F6" stroke-width="14" stroke-linejoin="round"/>
+  <!-- Magnifying glass lens -->
+  <circle cx="242" cy="236" r="62" fill="#0F172A" stroke="#F59E0B" stroke-width="16"/>
+  <circle cx="242" cy="236" r="32" fill="#3B82F6" fill-opacity="0.2"/>
+  <path d="M220 218C226 210 236 206 246 208" stroke="#F8FAFC" stroke-width="8" stroke-linecap="round"/>
+  <!-- Magnifying handle -->
+  <path d="M286 280L326 320" stroke="#F59E0B" stroke-width="20" stroke-linecap="round"/>
+</svg>
