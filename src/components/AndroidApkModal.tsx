@@ -197,10 +197,14 @@ export const AndroidApkModal: React.FC<AndroidApkModalProps> = ({
                 </label>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
-                    type="url"
+                    type="text"
+                    inputMode="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
-                    placeholder={serverUrl || 'https://tu-servidor-precinto.onrender.com'}
+                    placeholder="https://precinto-central.onrender.com"
                     className="min-h-[42px] flex-1 rounded-lg border border-[#CBB394] bg-[#FBF6EE] px-3 text-xs font-medium text-[#2C1B10] focus:border-[#8B5A2B] focus:outline-none dark:border-[#593C28] dark:bg-[#120C08] dark:text-[#FFF8EB]"
                   />
                   <button
@@ -208,9 +212,14 @@ export const AndroidApkModal: React.FC<AndroidApkModalProps> = ({
                     disabled={testing}
                     className="min-h-[42px] shrink-0 rounded-lg bg-[#7C4D2B] px-3.5 text-xs font-semibold text-white hover:bg-[#643C1F] disabled:opacity-60 dark:bg-[#8B5A2B]"
                   >
-                    {testing ? 'Probando...' : 'Probar y Guardar'}
+                    {testing ? 'Conectando...' : 'Probar y Guardar'}
                   </button>
                 </div>
+                {testing && (
+                  <p className="text-[11px] text-[#7A5E46] dark:text-[#C8B297]">
+                    Probando conexión... si el servidor gratuito estaba en reposo, puede tardar hasta 30 segundos en despertar.
+                  </p>
+                )}
                 {customServerUrl && (
                   <button
                     type="button"

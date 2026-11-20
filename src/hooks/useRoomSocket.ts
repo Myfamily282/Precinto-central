@@ -15,12 +15,22 @@ const SERVER_URL_KEY = 'precinto_server_url';
 export function normalizeServerOrigin(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, '');
   if (!trimmed) return '';
-  if (trimmed.startsWith('wss://')) return `https://${trimmed.slice(6).replace(/\/ws$/, '')}`;
-  if (trimmed.startsWith('ws://')) return `http://${trimmed.slice(5).replace(/\/ws$/, '')}`;
-  if (trimmed.startsWith('https://') || trimmed.startsWith('http://')) {
-    return trimmed.replace(/\/ws$/, '');
+
+  let candidate = trimmed;
+  if (candidate.startsWith('wss://')) {
+    candidate = `https://${candidate.slice(6)}`;
+  } else if (candidate.startsWith('ws://')) {
+    candidate = `http://${candidate.slice(5)}`;
+  } else if (!candidate.startsWith('https://') && !candidate.startsWith('http://')) {
+    candidate = `https://${candidate}`;
   }
-  return `https://${trimmed.replace(/\/ws$/, '')}`;
+
+  try {
+    const parsed = new URL(candidate);
+    return parsed.origin;
+  } catch {
+    return candidate.replace(/\/ws$/, '');
+  }
 }
 
 export function toWebSocketUrl(origin: string): string {
@@ -72,15 +82,27 @@ export function useRoomSocket() {
   const [privateRole, setPrivateRole] = useState<PrivateRolePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const envServerUrl = normalizeServerOrigin(
+    (import.meta.env.VITE_SERVER_URL as string | undefined) ?? ''
+  );
   const isStandaloneApk = detectStandaloneApk();
+  const needsServerConfig = isStandaloneApk && !customServerUrl && !envServerUrl;
   const serverUrl = resolveEffectiveServerOrigin(customServerUrl);
   const serverUrlRef = useRef(serverUrl);
   serverUrlRef.current = serverUrl;
+  const needsServerConfigRef = useRef(needsServerConfig);
+  needsServerConfigRef.current = needsServerConfig;
 
   const send = useCallback((event: ClientEvent) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      setError('Conectando con el servidor online... verifica tu internet o la URL del servidor.');
+      if (needsServerConfigRef.current) {
+        setError('Falta configurar la URL de tu servidor Online (toca "Configurar URL").');
+      } else {
+        setError(
+          'Conectando o despertando el servidor Online... Si usa plan gratuito, espera ~30 segundos e intenta de nuevo.'
+        );
+      }
       return;
     }
     ws.send(JSON.stringify(event));
@@ -88,11 +110,22 @@ export function useRoomSocket() {
 
   const connect = useCallback(() => {
     if (typeof window === 'undefined') return;
+    if (needsServerConfigRef.current) {
+      setConnected(false);
+      return;
+    }
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
 
     const targetOrigin = serverUrlRef.current;
     const wsUrl = toWebSocketUrl(targetOrigin);
     if (!wsUrl) return;
+
+    // Wake up sleeping cloud hosts (e.g. Render free tier) over HTTPS in parallel
+    if (targetOrigin.startsWith('https://') || targetOrigin.startsWith('http://')) {
+      fetch(`${targetOrigin}/api/health`, { method: 'GET' }).catch(() => {
+        // Ignore wake-up ping failures; WebSocket reconnect loop handles retries
+      });
+    }
 
     let ws: WebSocket;
     try {
@@ -105,6 +138,7 @@ export function useRoomSocket() {
 
     ws.onopen = () => {
       setConnected(true);
+      setError(null);
       const saved = window.sessionStorage.getItem(SESSION_KEY);
       if (saved) {
         try {
@@ -197,13 +231,13 @@ export function useRoomSocket() {
       if (wsRef.current === ws) {
         wsRef.current = null;
       }
-      if (shouldReconnectRef.current) {
+      if (shouldReconnectRef.current && !needsServerConfigRef.current) {
         if (reconnectTimerRef.current) {
           window.clearTimeout(reconnectTimerRef.current);
         }
         reconnectTimerRef.current = window.setTimeout(() => {
           connect();
-        }, 2000);
+        }, 2500);
       }
     };
   }, []);
@@ -233,6 +267,8 @@ export function useRoomSocket() {
         // Ignore storage errors
       }
       setCustomServerUrl(normalized);
+      const nextNeedsConfig = isStandaloneApk && !normalized && !envServerUrl;
+      needsServerConfigRef.current = nextNeedsConfig;
       serverUrlRef.current = resolveEffectiveServerOrigin(normalized);
       setError(null);
       if (reconnectTimerRef.current) {
@@ -242,11 +278,13 @@ export function useRoomSocket() {
         wsRef.current.close();
         wsRef.current = null;
       }
-      window.setTimeout(() => {
-        connect();
-      }, 120);
+      if (!nextNeedsConfig) {
+        window.setTimeout(() => {
+          connect();
+        }, 120);
+      }
     },
-    [connect]
+    [connect, envServerUrl, isStandaloneApk]
   );
 
   const testServerConnection = useCallback(
@@ -254,11 +292,15 @@ export function useRoomSocket() {
       candidateUrl?: string
     ): Promise<{ ok: boolean; activeRooms?: number; error?: string }> => {
       const target = normalizeServerOrigin(candidateUrl ?? '') || serverUrlRef.current;
-      if (!target) {
-        return { ok: false, error: 'Escribe la URL del servidor.' };
+      if (!target || target.includes('localhost') && isStandaloneApk) {
+        return {
+          ok: false,
+          error: 'Escribe la URL pública de tu servidor en Render o Railway (por ejemplo https://precinto-central.onrender.com).',
+        };
       }
       const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 5000);
+      // Render free tier cold starts can take 25-45s
+      const timeoutId = window.setTimeout(() => controller.abort(), 45000);
       try {
         const res = await fetch(`${target}/api/health`, {
           method: 'GET',
@@ -266,7 +308,10 @@ export function useRoomSocket() {
         });
         window.clearTimeout(timeoutId);
         if (!res.ok) {
-          return { ok: false, error: `El servidor respondió con código ${res.status}.` };
+          return {
+            ok: false,
+            error: `El servidor respondió con código ${res.status}. Asegúrate de usar la URL de tu servidor Node (Render/Railway), no la de la vista previa.`,
+          };
         }
         const data = (await res.json()) as { ok?: boolean; activeRooms?: number };
         if (data.ok) {
@@ -277,11 +322,12 @@ export function useRoomSocket() {
         window.clearTimeout(timeoutId);
         return {
           ok: false,
-          error: 'No se pudo conectar. Verifica que la URL empiece por https:// y esté activa.',
+          error:
+            'No respondió a tiempo. Verifica que la URL esté bien escrita y que tu servicio en Render ya aparezca como "Live".',
         };
       }
     },
-    []
+    [isStandaloneApk]
   );
 
   const createRoom = (name: string, color: string, avatarId: string, mode: GameMode) => {
@@ -328,6 +374,7 @@ export function useRoomSocket() {
     serverUrl,
     customServerUrl,
     isStandaloneApk,
+    needsServerConfig,
     updateServerUrl,
     testServerConnection,
     playerId,

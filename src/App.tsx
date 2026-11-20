@@ -584,14 +584,14 @@ export default function App() {
                         <Server className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
                         <div>
                           <p className="font-bold">
-                            {socket.isStandaloneApk
-                              ? 'Conecta tu APK a un servidor Online'
-                              : 'Esperando conexión con el servidor de salas'}
+                            {socket.needsServerConfig
+                              ? 'Falta conectar tu APK a un servidor Online'
+                              : 'Conectando con el servidor Online...'}
                           </p>
                           <p className="mt-1 leading-relaxed text-amber-900/85 dark:text-amber-200/85">
-                            {socket.isStandaloneApk
-                              ? 'Como estás usando el APK nativo, pega la URL pública donde está corriendo el servidor (por ejemplo Render, Railway o tu enlace compartido) para jugar Online.'
-                              : 'Si abriste la app desde un APK nativo sin servidor integrado, configura la URL del servidor Online en la guía.'}
+                            {socket.needsServerConfig
+                              ? 'Este APK no trae servidor integrado. Despliega el proyecto en Render (gratis) y pega tu URL https://... aquí para crear y unirte a salas.'
+                              : 'Intentando conectar con el servidor. Si usas el plan gratuito de Render y estaba en reposo, tarda ~25–35 segundos en despertar.'}
                           </p>
                         </div>
                       </div>
