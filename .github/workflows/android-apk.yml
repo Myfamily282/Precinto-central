@@ -23,9 +23,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install dependencies and build web bundle
         env:
           VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
@@ -40,6 +37,9 @@ jobs:
             npx cap add android
           fi
           npx cap sync android
+          if [ -n "$ANDROID_HOME" ] && [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          fi
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
