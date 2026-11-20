@@ -23,17 +23,22 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install dependencies and build web bundle
         env:
           VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
         run: |
-          npm install
+          npm install --legacy-peer-deps
           npm run build
 
       - name: Add Capacitor Android & build APK
         run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android --no-save
-          npx cap add android || true
+          npm install @capacitor/core @capacitor/cli @capacitor/android --no-save --legacy-peer-deps
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
           npx cap sync android
           cd android
           chmod +x gradlew
